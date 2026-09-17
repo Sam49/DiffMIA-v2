@@ -1,0 +1,4 @@
+# Optional worker dependencies for WORKER_MODE=celery deployments.
+#   pip install -r requirements-celery.txt
+celery[redis]>=5.4
+redis>=5.0

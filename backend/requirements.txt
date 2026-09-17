@@ -1,0 +1,18 @@
+# ── DiffMIA backend: core runtime dependencies ──────────────────
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+SQLAlchemy>=2.0.30,<2.1
+alembic>=1.13
+pydantic>=2.7
+pydantic-settings>=2.3
+PyYAML>=6.0.1
+python-multipart>=0.0.9
+httpx>=0.27
+psycopg[binary]>=3.1.18
+reportlab>=4.1
+cryptography>=42.0
+
+# ── Optional: heavy local inference ─────────────────────────────
+# Install with:  pip install -r requirements-transformers.txt
+# torch / transformers / accelerate intentionally NOT installed by
+# default so DEMO MODE (mock provider) has zero heavy dependencies.

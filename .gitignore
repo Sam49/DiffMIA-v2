@@ -1,0 +1,65 @@
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+data/
+database/*.db
+
+# ── Node ────────────────────────────────────────────────────────
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# ── Environment / secrets — never commit ────────────────────────
+.env
+.env.*
+!.env.example
+# Google OAuth downloads (client_secret_<id>.json)
+client_secret*.json
+# key / cert material of every common shape
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+*.ppk
+# generic credential drops
+credentials*.json
+secrets/
+
+# ── Databases (SQLite + sidecars) ───────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# ── Local tooling state (never publish) ─────────────────────────
+.freebuff/
+.claude/
+.playwright-cli/
+.cursor/
+.aider*
+
+# ── OS / editor ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ── Logs ────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*

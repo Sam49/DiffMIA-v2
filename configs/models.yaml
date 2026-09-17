@@ -1,0 +1,115 @@
+# ────────────────────────────────────────────────────────────────
+# DiffMIA model registry.
+#
+# Providers:
+#   mock               – deterministic synthetic losses, requires no GPU/API (DEMO MODE)
+#   transformers       – local Hugging Face causal LM (Llama family, CodeLlama, ...)
+#   openai_compatible  – any OpenAI-compatible completions API that exposes logprobs
+#
+# Secrets are NEVER stored here or in the database. Use `${ENV_VAR}`
+# references; values are resolved from the environment at runtime.
+#
+# Add new model entries freely. Inference code is provider-driven, so new
+# models can be registered without touching the analysis engine.
+# ────────────────────────────────────────────────────────────────
+
+models:
+  # Deterministic demo provider – always available, needs nothing external.
+  diffmia-mock:
+    display_name: "DiffMIA Mock (Demo)"
+    provider: mock
+    model_id: diffmia-mock-v1
+    description: "Deterministic synthetic losses for demo/testing. No model is downloaded."
+    memorization_ratio: 0.35
+    memorization_delta: 0.9
+
+  # Llama 3 family (requires HF_TOKEN for gated checkpoints).
+  llama-3-8b:
+    display_name: "Llama 3 8B Instruct"
+    provider: transformers
+    model_id: meta-llama/Meta-Llama-3-8B-Instruct
+    description: "Llama 3 8B – needs a GPU and a Hugging Face token."
+    device: auto
+    torch_dtype: auto
+    trust_remote_code: false
+    load_in_8bit: false
+
+  llama-3-70b:
+    display_name: "Llama 3 70B Instruct"
+    provider: transformers
+    model_id: meta-llama/Meta-Llama-3-70B-Instruct
+    description: "Llama 3 70B – requires substantial GPU memory."
+    device: auto
+    torch_dtype: auto
+    trust_remote_code: false
+    load_in_8bit: false
+
+  codellama-7b:
+    display_name: "CodeLlama 7B"
+    provider: transformers
+    model_id: codellama/CodeLlama-7b-hf
+    description: "CodeLlama 7B base model."
+    device: auto
+    torch_dtype: auto
+    trust_remote_code: false
+    load_in_8bit: false
+
+  codellama-13b:
+    display_name: "CodeLlama 13B"
+    provider: transformers
+    model_id: codellama/CodeLlama-13b-hf
+    description: "CodeLlama 13B base model."
+    device: auto
+    torch_dtype: auto
+    trust_remote_code: false
+    load_in_8bit: false
+
+  codellama-34b:
+    display_name: "CodeLlama 34B"
+    provider: transformers
+    model_id: codellama/CodeLlama-34b-hf
+    description: "CodeLlama 34B base model."
+    device: auto
+    torch_dtype: auto
+    trust_remote_code: false
+    load_in_8bit: false
+
+  deepseek-coder:
+    display_name: "DeepSeek-Coder (API)"
+    provider: deepseek
+    model_id: ${DEEPSEEK_MODEL:-deepseek-coder}
+    endpoint: ${DEEPSEEK_ENDPOINT:-https://api.deepseek.com}
+    api_key: ${DEEPSEEK_API_KEY}
+    description: "DeepSeek-Coder via its chat API. The chat API does NOT expose input-token logprobs, so differential-loss analysis reports LOGPROBS_UNSUPPORTED rather than fabricating values. Set supports_logprobs: true only via a gateway that genuinely returns input logprobs."
+    api_style: chat
+    supports_logprobs: false
+    timeout_seconds: 300
+    max_retries: 3
+
+  # Self-hosted / gateway endpoints exposing *input-token* logprobs through
+  # the legacy /completions echo schema (vLLM, llama.cpp, TGI...). These DO
+  # support differential-loss analysis when the server provides token logprobs
+  # for echoed prompts.
+  vllm-local:
+    display_name: "Local vLLM (completions echo)"
+    provider: openai_compatible
+    model_id: ${OPENAI_MODEL:-}
+    endpoint: ${OPENAI_ENDPOINT:-http://localhost:8000/v1}
+    api_key: ${OPENAI_API_KEY}
+    description: "OpenAI-compatible /completions endpoint with echo token logprobs (supports_logprobs: true)."
+    api_style: completions
+    supports_logprobs: true
+    timeout_seconds: 300
+    max_retries: 3
+
+  openai-gpt:
+    display_name: "OpenAI Chat endpoint (no input logprobs)"
+    provider: openai_compatible
+    model_id: ${OPENAI_MODEL:-}
+    endpoint: ${OPENAI_ENDPOINT:-https://api.openai.com/v1}
+    api_key: ${OPENAI_API_KEY}
+    description: "Generic OpenAI chat endpoint. Chat APIs return logprobs for generated tokens only, so scoring reports LOGPROBS_UNSUPPORTED unless the endpoint exposes input logprobs."
+    api_style: chat
+    supports_logprobs: false
+    timeout_seconds: 300
+    max_retries: 3

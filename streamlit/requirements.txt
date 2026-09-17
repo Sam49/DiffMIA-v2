@@ -1,0 +1,6 @@
+# DiffMIA Streamlit research interface
+# Install with: pip install -r streamlit/requirements.txt
+streamlit>=1.36
+requests>=2.31
+pandas>=2.0
+plotly>=5.20

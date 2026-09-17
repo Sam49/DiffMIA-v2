@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed;
+  --color-brand-700: #6d28d9;
+  --color-brand-800: #5b21b6;
+  --color-brand-900: #4c1d95;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+}
+
+code,
+pre,
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Card */
+.card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
+}
+
+.card-header {
+  @apply border-b border-slate-200 px-5 py-3 text-sm font-semibold tracking-wide text-slate-600 dark:border-slate-800 dark:text-slate-300;
+}
+
+.input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none
+    placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30
+    dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition
+    disabled:cursor-not-allowed disabled:opacity-50
+    bg-brand-700 text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-700;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition
+    disabled:cursor-not-allowed disabled:opacity-50 border border-slate-300 bg-white text-slate-700 hover:bg-slate-100
+    dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition
+    disabled:cursor-not-allowed disabled:opacity-50 border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100
+    dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition
+    disabled:cursor-not-allowed disabled:opacity-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800
+    dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+}
+
+.status-running {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300;
+}
+
+.status-completed {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300;
+}
+
+.status-queued {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300;
+}
+
+.status-failed {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300;
+}
+
+.status-cancelled {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300;
+}
+
+th {
+  text-align: left;
+}
+
+.diff-old {
+  @apply rounded bg-rose-100 px-0.5 text-rose-700 ring-1 ring-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:ring-rose-800;
+}
+
+.diff-new {
+  @apply rounded bg-emerald-100 px-0.5 text-emerald-700 ring-1 ring-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800;
+}

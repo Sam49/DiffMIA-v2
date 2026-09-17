@@ -1,0 +1,32 @@
+# ────────────────────────────────────────────────────────────────
+# DiffMIA — NVIDIA GPU overlay for local / cloud GPU inference.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+#
+# Requires the NVIDIA Container Toolkit on the host. Attaches GPUs to
+# both backend and worker; register a transformers-based model (see
+# configs/models.yaml) and set DEVICE=cuda.
+# ────────────────────────────────────────────────────────────────
+
+services:
+  backend:
+    environment:
+      DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-all}
+              capabilities: [gpu]
+
+  worker:
+    environment:
+      DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-all}
+              capabilities: [gpu]

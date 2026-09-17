@@ -1,0 +1,12 @@
+# Heavy local-inference dependencies. Install separately:
+#   pip install -r requirements-transformers.txt
+# These support the `transformers` provider (Llama family, CodeLlama, ...).
+# Pick a torch build suited to your machine:
+#   CUDA:   pip install torch --index-url https://download.pytorch.org/whl/cu121
+#   CPU:    standard PyPI torch wheel
+torch>=2.2
+transformers>=4.40
+accelerate>=0.30
+sentencepiece>=0.2.0
+protobuf>=4.25
+safetensors>=0.4.3

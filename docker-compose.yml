@@ -1,0 +1,142 @@
+# ────────────────────────────────────────────────────────────────
+# DiffMIA — full deployment stack (CPU default, GPU overlay below).
+#
+#   docker compose up --build
+#
+# Starts: frontend (nginx SPA + /api proxy) · backend (FastAPI +
+# Alembic migrations + seed) · postgres (primary storage) ·
+# redis (broker + optional cache) · worker (Celery).
+#
+# This is a production-shaped deployment: Postgres is the database and
+# experiments run on a separate Celery worker. The deterministic mock
+# provider and the bundled sample dataset are seeded at startup, so you
+# can validate the stack end to end before attaching real models.
+#
+# No `.env` file is required — every value has a safe default. Docker
+# Compose reads `.env` automatically when present (see .env.example)
+# and interpolates it over the defaults below.
+# ────────────────────────────────────────────────────────────────
+
+name: diffmia
+
+services:
+  # ── Frontend: nginx serving the built React SPA ──────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ── Backend: FastAPI + migrations ─────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment: &backend_env
+      APP_NAME: ${APP_NAME:-DiffMIA}
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SECRET_KEY: ${SECRET_KEY:-please-change-me}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      # Storage ──────────────────────────────────────────────────
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-diffmia}:${POSTGRES_PASSWORD:-diffmia}@postgres:5432/${POSTGRES_DB:-diffmia}
+      REDIS_URL: redis://redis:6379/0
+      RUN_MIGRATIONS: "true"
+      AUTO_CREATE_TABLES: "false"
+      # Worker ───────────────────────────────────────────────────
+      WORKER_MODE: celery
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      # CORS: browser talks to the SPA origin, which nginx proxies.
+      CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-8080},http://127.0.0.1:${FRONTEND_PORT:-8080}
+      # Admin (seeded only when no user exists)
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-now}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      # Model registry + local inference
+      MODELS_CONFIG_PATH: /app/configs/models.yaml
+      DEMO_DATASET_PATH: /app/datasets/sample.jsonl
+      MODEL_CACHE_DIR: /app/data/models
+      HF_HOME: /app/data/models
+      HF_TOKEN: ${HF_TOKEN:-}
+      DEVICE: ${DEVICE:-auto}
+      TORCH_DTYPE: ${TORCH_DTYPE:-auto}
+      # API providers (secret values come from .env, never committed)
+      DEEPSEEK_ENDPOINT: ${DEEPSEEK_ENDPOINT:-https://api.deepseek.com}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-coder}
+      OPENAI_ENDPOINT: ${OPENAI_ENDPOINT:-https://api.openai.com/v1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      # Pipeline defaults
+      DEFAULT_MUTATION_COUNT: ${DEFAULT_MUTATION_COUNT:-5}
+      DEFAULT_MUTATION_SEED: ${DEFAULT_MUTATION_SEED:-42}
+      DEFAULT_MUTATION_STRENGTH: ${DEFAULT_MUTATION_STRENGTH:-0.3}
+      DEFAULT_BATCH_SIZE: ${DEFAULT_BATCH_SIZE:-4}
+      ENABLE_TOKEN_LOSS_STORAGE: ${ENABLE_TOKEN_LOSS_STORAGE:-false}
+      ENABLE_INFERENCE_CACHE: ${ENABLE_INFERENCE_CACHE:-true}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+    volumes:
+      - model_cache:/app/data/models
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Worker: Celery consuming experiment jobs ──────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["celery", "-A", "app.workers.tasks:celery_app", "worker", "--loglevel=info", "--concurrency=1"]
+    environment: *backend_env
+    volumes:
+      - model_cache:/app/data/models
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── PostgreSQL (primary storage) ──────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-diffmia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-diffmia}
+      POSTGRES_DB: ${POSTGRES_DB:-diffmia}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-diffmia} -d ${POSTGRES_DB:-diffmia}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # ── Redis: broker for the Celery worker ───────────────────────
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  model_cache:
