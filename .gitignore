@@ -21,6 +21,7 @@ dist/
 # ── Environment / secrets — never commit ────────────────────────
 .env
 .env.*
+*.env
 !.env.example
 # Google OAuth downloads (client_secret_<id>.json)
 client_secret*.json
