@@ -164,7 +164,7 @@ def test_every_bundled_file_imports_with_complete_python(client, admin_headers):
 
     seed_bundled_datasets()
     listing = client.get("/api/datasets", headers=admin_headers).json()
-    assert listing["total"] >= 3
+    assert listing["total"] >= 5
 
     for summary in listing["items"]:
         body = client.get(
@@ -180,3 +180,7 @@ def test_every_bundled_file_imports_with_complete_python(client, admin_headers):
             assert summary["item_count"] == 164
         if summary["name"] == "mbpp_sanitized":
             assert summary["item_count"] > 400
+        if summary["name"] == "bigcodebench":
+            assert summary["item_count"] == 1140
+        if summary["name"] == "ds1000":
+            assert summary["item_count"] == 323

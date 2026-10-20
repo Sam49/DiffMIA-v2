@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Import the official HumanEval and MBPP benchmark corpora as bundled datasets.
+"""Import official benchmark corpora as bundled datasets.
 
 DiffMIA scores benchmark snippets, so the corpora it ships with should be the
 real ones. This script converts the upstream releases into the project's dataset
@@ -14,10 +14,18 @@ Sources (fetched through the Hugging Face datasets server, no SDK required):
   that the mutation engine can parse with the AST.
 * ``google-research-datasets/mbpp`` (``sanitized``) — 427 problems,
   CC-BY-4.0, © Google Research.
+* ``bigcode/bigcodebench`` (``v0.1.4``) — 1140 problems, Apache-2.0,
+  © BigCode. ``code`` = ``code_prompt`` (imports + function declaration) +
+  ``canonical_solution``.
+* ``xlangai/DS-1000`` — 1000 data-science problems, CC-BY-SA-4.0,
+  © XLang Lab (HKUNLP). Rows whose ``reference_code`` is not a top-level
+  function definition (library-specific driver-only code) are counted and
+  skipped, never rewritten or wrapped, so the mutation engine only ever sees
+  shapes it can parse.
 
 Usage::
 
-    python scripts/import_benchmarks.py                # both corpora
+    python scripts/import_benchmarks.py                # all corpora
     python scripts/import_benchmarks.py --source humaneval --limit 20
     python scripts/import_benchmarks.py --out datasets
 
@@ -64,6 +72,26 @@ SOURCES: dict[str, dict[str, Any]] = {
         "dataset_name": "mbpp_sanitized",
         "description": "Google Research MBPP (sanitized) — entry-level Python programming problems.",
         "license": "CC-BY-4.0 © Google Research",
+    },
+    "bigcodebench": {
+        "dataset": "bigcode/bigcodebench",
+        "config": "default",
+        # v0.1.4 is the latest published inventory of the corpus; the earlier
+        # version splits overlap it (same task_id), so only this one is used.
+        "splits": ("v0.1.4",),
+        "filename": "bigcodebench.jsonl",
+        "dataset_name": "bigcodebench",
+        "description": "BigCodeBench — practical Python tasks with diverse standard-library and third-party calls.",
+        "license": "Apache-2.0 © BigCode",
+    },
+    "ds1000": {
+        "dataset": "xlangai/DS-1000",
+        "config": "default",
+        "splits": ("test",),
+        "filename": "ds1000.jsonl",
+        "dataset_name": "ds1000",
+        "description": "DS-1000 — data-science Python problems across Pandas, NumPy, SciPy and related libraries.",
+        "license": "CC-BY-SA-4.0 © XLang Lab (HKUNLP)",
     },
 }
 
@@ -131,6 +159,16 @@ def _valid_python(code: str) -> bool:
     return True
 
 
+def _has_top_level_def(code: str) -> bool:
+    """True when the code contains at least one top-level function definition."""
+    if not _valid_python(code):
+        return False
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        tree = ast.parse(code, mode="exec")
+    return any(isinstance(node, ast.FunctionDef) for node in tree.body)
+
+
 def _humaneval_record(row: dict[str, Any], index: int) -> dict[str, Any] | None:
     prompt = str(row.get("prompt") or "")
     solution = str(row.get("canonical_solution") or "")
@@ -173,7 +211,73 @@ def _mbpp_record(row: dict[str, Any], index: int) -> dict[str, Any] | None:
     }
 
 
-BUILDERS = {"humaneval": _humaneval_record, "mbpp": _mbpp_record}
+def _bigcodebench_record(row: dict[str, Any], index: int) -> dict[str, Any] | None:
+    declaration = str(row.get("code_prompt") or "")
+    solution = str(row.get("canonical_solution") or "")
+    # code_prompt carries imports + the `def task_func(...):` header; the
+    # canonical solution is the indented body, so concatenation yields a
+    # complete function definition (same convention as HumanEval).
+    code = _clean_code(declaration + solution)
+    if not code or not _valid_python(code):
+        return None
+    task_id = str(row.get("task_id") or f"BigCodeBench/{index}")
+    libs_raw = row.get("libs") or []
+    libs = [str(value) for value in libs_raw] if isinstance(libs_raw, (list, tuple)) else []
+    return {
+        "id": f"bigcodebench_{index:03d}",
+        "dataset_name": SOURCES["bigcodebench"]["dataset_name"],
+        "problem_statement": str(row.get("instruct_prompt") or "").strip()[:1000],
+        "code": code,
+        "language": "python",
+        "metadata": {
+            "source": "bigcode/bigcodebench",
+            "license": SOURCES["bigcodebench"]["license"],
+            "task_id": task_id,
+            "entry_point": str(row.get("entry_point") or ""),
+            "libs": libs,
+        },
+    }
+
+
+def _ds1000_record(row: dict[str, Any], index: int) -> dict[str, Any] | None:
+    code = _clean_code(str(row.get("reference_code") or ""))
+    # DS-1000 reference code is often driver-only (`result = g(df, List)` with
+    # the function ambiguity resolved elsewhere in the harness). A row without
+    # a top-level `def` never yields a function the mutation engine can rename,
+    # so it is skipped rather than reshaped.
+    if not code or not _has_top_level_def(code):
+        return None
+    metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+    problem_id = metadata.get("problem_id", index)
+    prompt = str(row.get("prompt") or "")
+    # The prompt is 'Problem: <natural language> A: <code context>'. Keep only
+    # the natural-language task; the trailing code context is upstream data we
+    # do not need and would otherwise truncate mid-snippet.
+    statement = prompt.split("\nA:\n", 1)[0].removeprefix("Problem:").strip()
+    return {
+        "id": f"ds1000_{int(problem_id):04d}",
+        "dataset_name": SOURCES["ds1000"]["dataset_name"],
+        "problem_statement": statement[:1000],
+        "code": code,
+        "language": "python",
+        "metadata": {
+            "source": "xlangai/DS-1000",
+            "license": SOURCES["ds1000"]["license"],
+            "problem_id": problem_id,
+            "library": str(metadata.get("library") or ""),
+            "test_case_cnt": metadata.get("test_case_cnt"),
+            "perturbation_type": metadata.get("perturbation_type"),
+            "perturbation_origin_id": metadata.get("perturbation_origin_id"),
+        },
+    }
+
+
+BUILDERS = {
+    "humaneval": _humaneval_record,
+    "mbpp": _mbpp_record,
+    "bigcodebench": _bigcodebench_record,
+    "ds1000": _ds1000_record,
+}
 
 
 def build_source(name: str, out_dir: Path, limit: int | None) -> tuple[int, int]:
@@ -204,8 +308,8 @@ def build_source(name: str, out_dir: Path, limit: int | None) -> tuple[int, int]
     )
     print(
         f"{name}: wrote {len(records)} items from splits {'+'.join(source['splits'])} "
-        f"to {target.relative_to(REPO_ROOT)}"
-        + (f" ({skipped} skipped: unparseable code)" if skipped else "")
+        f"to {target if target.is_absolute() else target.relative_to(REPO_ROOT)}"
+        + (f" ({skipped} skipped: unsuitable code)" if skipped else "")
     )
     return len(records), skipped
 
