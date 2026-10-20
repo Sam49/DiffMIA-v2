@@ -198,9 +198,11 @@ Copy `.env.example` to `.env` and edit. Variables of note:
 | `WORKER_MODE` | `thread` | `thread` (in-process) or `celery` (dedicated worker). |
 | `HF_TOKEN` | *(empty)* | Hugging Face token for gated models (Llama 3). |
 | `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` | *(empty)* | API provider keys. |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | *(empty)* | Google OAuth SSO. Set both to show "Continue with Google" on the login page. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | *(empty)* | Google OAuth SSO (`/api/auth/oauth/start`). Needs a sign-in surface — see 14d. |
 | `OAUTH_FRONTEND_ORIGIN` | `http://localhost:5173` | Frontend origin the OAuth callback redirects to. |
 | `OAUTH_DEFAULT_ROLE` | `VIEWER` | Role granted to first-time Google sign-ins. |
+| `AUTO_LOGIN_ENABLED` | `false` | This frontend has no login page: at startup it requests a session for `AUTO_LOGIN_USERNAME`. Trusted/self-hosted instances only. |
+| `AUTO_LOGIN_USERNAME` | `admin` | Account that startup session belongs to (must exist, be active and verified). |
 | `DEVICE` | `auto` | `auto` / `cuda` / `mps` / `cpu`. |
 | `MODEL_CACHE_DIR` | `./data/models` | Local HF cache. |
 | `DEMO_MODEL_ID` | `diffmia-mock` | Model used by one-click demo experiments. |
@@ -582,7 +584,7 @@ REGISTRATION_ENABLED=true
 REGISTRATION_DEFAULT_ROLE=VIEWER   # never ADMIN — enforced server-side
 ```
 
-The login page then shows a **Sign in / Create account** tab switcher.
+The sign-up form lives on the login page, which this build does not ship (see 14d).
 Registration requires a username (3–64 chars, `[A-Za-z0-9_.-]`), an email
 (unique, case-insensitive) and a password of at least 8 characters; new users
 are signed in immediately. The endpoint shares the login rate limiter and
@@ -605,6 +607,34 @@ without a mail server.
 "Forgot your password?" on the login page sends a signed, single-use,
 one-hour reset link. The endpoint always answers identically whether or not
 the account exists, so it leaks no account information.
+
+## 14d. Running without a login page
+
+This build ships **without a login page**: instead of presenting a sign-in
+screen, the frontend asks the backend for a session as it starts and renders the
+dashboard directly. To run that way, set in `.env`:
+
+```bash
+AUTO_LOGIN_ENABLED=true
+AUTO_LOGIN_USERNAME=admin     # must exist, be active and have a verified email
+```
+
+`POST /api/auth/auto-login` then issues a normal JWT for that account, so every
+page, role check and audit entry behaves exactly as it does for a password
+login. It refuses to do so unless the flag is on (`403`), and unless the account
+exists, is active and verified (`401`, with the reason); the call shares the
+login rate limiter.
+
+**Security:** with the flag on, anyone who can reach the API obtains a session
+for `AUTO_LOGIN_USERNAME` — no password, no Google consent. Use it for local or
+otherwise trusted deployments only; leave it `false` for anything public.
+
+What still works without the page: password-reset and email-verification links
+(their routes are unchanged), the admin **Users** page, and Google account
+linking from **Settings**. The registration, forgot-password, reset and verify
+routes remain served, but nothing in the UI links to them any more. If a session
+cannot be established, the app shows the server's reason with a retry button
+instead of falling back to a sign-in form.
 
 ## 15. Docker deployment
 

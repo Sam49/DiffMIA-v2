@@ -97,6 +97,43 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     return TokenResponse(access_token=token, user=_user_out(user))
 
 
+@router.post("/auth/auto-login", response_model=TokenResponse)
+def auto_login(request: Request, db: Session = Depends(get_db)) -> TokenResponse:
+    """Issue a session for the configured account without credentials.
+
+    Only active when AUTO_LOGIN_ENABLED=true (self-hosted installations that do
+    not want a sign-in screen). Disabled by default, so a public deployment can
+    never be entered without credentials.
+    """
+    settings = get_settings()
+    if not settings.auto_login_enabled:
+        raise PermissionDeniedError("Automatic sign-in is disabled on this server.")
+    client = request.client.host if request.client else "unknown"
+    if not _limiter.allow(f"auto-login:{client}"):
+        raise AuthenticationError("Too many sign-in attempts. Try again later.")
+    username = settings.auto_login_username.strip()
+    user = db.execute(select(User).where(User.username == username)).scalar_one_or_none()
+    if user is None:
+        raise AuthenticationError(f"Automatic sign-in account '{username}' does not exist.")
+    if not user.is_active:
+        raise AuthenticationError(f"Automatic sign-in account '{username}' is disabled.")
+    if not user.email_verified:
+        # Every endpoint would reject the token, so fail here with the reason.
+        raise AuthenticationError(
+            f"Automatic sign-in account '{username}' has not verified its email address.",
+            code="EMAIL_NOT_VERIFIED",
+        )
+    logger.info(
+        "Automatic sign-in issued a session for '%s' (role %s).", user.username, user.role
+    )
+    token = create_access_token(
+        {"sub": str(user.id), "username": user.username, "role": user.role},
+        settings.secret_key,
+        settings.access_token_expire_minutes,
+    )
+    return TokenResponse(access_token=token, user=_user_out(user))
+
+
 @router.get("/auth/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)) -> UserOut:
     return _user_out(user)

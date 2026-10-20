@@ -52,8 +52,8 @@ export default function OAuthCallbackPage() {
             <>
               <p className="mb-3 text-sm font-semibold text-rose-300">Google sign-in failed</p>
               <p className="mb-5 text-xs text-slate-400">{error}</p>
-              <Link to="/login" className="btn-primary inline-block w-full !py-2.5 text-center">
-                Back to sign in
+              <Link to="/dashboard" className="btn-primary inline-block w-full !py-2.5 text-center">
+                Continue to DiffMIA
               </Link>
             </>
           ) : (

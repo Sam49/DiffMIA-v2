@@ -1,8 +1,33 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { api, clearAuth, getStoredUser, setAuth, setStoredUser, type UserShape } from "../services/api";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  ApiError,
+  api,
+  clearAuth,
+  getStoredUser,
+  setAuth,
+  setStoredUser,
+  type UserShape,
+} from "../services/api";
 
 interface AuthState {
   user: UserShape | null;
+  /** True once the startup sign-in attempt has settled (succeeded or failed). */
+  ready: boolean;
+  /** Why the startup sign-in failed — rendered where the login page used to be. */
+  startupError: string | null;
+  /** The session was established automatically: there is nothing to sign out of. */
+  autoSignedIn: boolean;
+  /** Re-run the startup sign-in (used by the failure screen). */
+  startSession: () => Promise<void>;
   login: (username: string, password: string) => Promise<UserShape>;
   register: (username: string, email: string, password: string) => Promise<{ user: UserShape; verified: boolean }>;
   loginWithGoogleToken: (token: string) => Promise<UserShape>;
@@ -15,6 +40,38 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserShape | null>(() => getStoredUser<UserShape>());
+  const [ready, setReady] = useState(() => Boolean(getStoredUser<UserShape>()));
+  const [startupError, setStartupError] = useState<string | null>(null);
+  const [autoSignedIn, setAutoSignedIn] = useState(false);
+  const attempted = useRef(false);
+
+  /**
+   * The app has no login page, so an installation with AUTO_LOGIN_ENABLED set
+   * hands it a real session at startup. Failures are shown to the operator
+   * verbatim: they name the account or the flag that needs fixing.
+   */
+  const startSession = useCallback(async () => {
+    try {
+      const response = await api.autoLogin();
+      setAuth(response.access_token);
+      setStoredUser(response.user);
+      setUser(response.user);
+      setAutoSignedIn(true);
+      setStartupError(null);
+    } catch (err) {
+      setStartupError(
+        err instanceof ApiError ? err.message : "Could not start a session with the server.",
+      );
+    } finally {
+      setReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (attempted.current) return; // StrictMode / remount guard
+    attempted.current = true;
+    if (!getStoredUser<UserShape>()) void startSession();
+  }, [startSession]);
 
   const login = useCallback(async (username: string, password: string) => {
     const response = await api.login(username, password);
@@ -62,11 +119,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearAuth();
     setUser(null);
-  }, []);
+    if (autoSignedIn) {
+      // There is no screen to sign in at, so replace the session immediately.
+      setReady(false);
+      void startSession();
+    }
+  }, [autoSignedIn, startSession]);
 
   const value = useMemo(
-    () => ({ user, login, register, loginWithGoogleToken, refreshUser, logout }),
-    [user, login, register, loginWithGoogleToken, refreshUser, logout],
+    () => ({
+      user,
+      ready,
+      startupError,
+      autoSignedIn,
+      startSession,
+      login,
+      register,
+      loginWithGoogleToken,
+      refreshUser,
+      logout,
+    }),
+    [
+      user,
+      ready,
+      startupError,
+      autoSignedIn,
+      startSession,
+      login,
+      register,
+      loginWithGoogleToken,
+      refreshUser,
+      logout,
+    ],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

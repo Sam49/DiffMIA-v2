@@ -52,10 +52,10 @@ export default function ResetPasswordPage() {
     return (
       <Shell>
         <p className="rounded-lg bg-emerald-950 px-3 py-2 text-xs text-emerald-300">
-          Password updated. You can now sign in with your new password.
+          Password updated successfully.
         </p>
-        <button className="btn-primary mt-4 w-full !py-2.5" onClick={() => navigate("/login")}>
-          Go to sign in
+        <button className="btn-primary mt-4 w-full !py-2.5" onClick={() => navigate("/dashboard")}>
+          Continue to DiffMIA
         </button>
       </Shell>
     );

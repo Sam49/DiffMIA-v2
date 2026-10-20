@@ -25,6 +25,7 @@ os.environ["ADMIN_PASSWORD"] = "admin"
 os.environ["REGISTRATION_ENABLED"] = "false"
 os.environ["REGISTRATION_DEFAULT_ROLE"] = "VIEWER"
 os.environ["EMAIL_VERIFICATION_REQUIRED"] = "false"
+os.environ["AUTO_LOGIN_ENABLED"] = "false"
 os.environ["ENABLE_INFERENCE_CACHE"] = "true"
 # Blank (not merely absent) so a real OAuth client in .env cannot leak in and flip
 # google_enabled. Tests that need it enabled patch the settings object instead.

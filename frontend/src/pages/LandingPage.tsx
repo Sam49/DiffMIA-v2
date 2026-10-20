@@ -23,7 +23,8 @@ export default function LandingPage() {
   const runDemo = async () => {
     setError(null);
     if (!user) {
-      navigate("/login");
+      // No session yet: the dashboard explains why one could not be started.
+      navigate("/dashboard");
       return;
     }
     setBusy(true);
@@ -46,11 +47,7 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          {user ? (
-            <Link to="/dashboard" className="btn-primary">Open dashboard →</Link>
-          ) : (
-            <Link to="/login" className="btn-primary">Sign in</Link>
-          )}
+          <Link to="/dashboard" className="btn-primary">Open dashboard →</Link>
         </div>
       </header>
 
@@ -72,7 +69,7 @@ export default function LandingPage() {
             <button onClick={runDemo} disabled={busy} className="btn-primary !px-6 !py-3 text-base">
               {busy ? "Starting…" : "▶ Run Demo"}
             </button>
-            <Link to={user ? "/dashboard" : "/login"} className="btn-secondary !px-6 !py-3 text-base">
+            <Link to="/dashboard" className="btn-secondary !px-6 !py-3 text-base">
               Start Experiment
             </Link>
           </div>

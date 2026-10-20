@@ -50,8 +50,8 @@ export default function ForgotPasswordPage() {
                   </Link>
                 </div>
               )}
-              <Link to="/login" className="btn-primary block w-full !py-2.5 text-center">
-                Back to sign in
+              <Link to="/dashboard" className="btn-primary block w-full !py-2.5 text-center">
+                Continue to DiffMIA
               </Link>
             </div>
           ) : (
@@ -74,8 +74,8 @@ export default function ForgotPasswordPage() {
                 {busy ? "Sending…" : "Send reset link"}
               </button>
               <p className="text-center text-xs text-slate-500">
-                <Link to="/login" className="underline hover:text-slate-300">
-                  Back to sign in
+                <Link to="/dashboard" className="underline hover:text-slate-300">
+                  Continue to DiffMIA
                 </Link>
               </p>
             </form>

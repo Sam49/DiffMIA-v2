@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
 import { useFetch } from "../hooks/useFetch";
@@ -27,14 +27,8 @@ function ThemeToggle() {
 const ADMIN_NAV = [{ to: "/users", label: "Users", icon: "◍" }];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, autoSignedIn } = useAuth();
   const demo = useFetch<DemoStatus>(() => api.demoStatus(), []);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
 
   return (
     <div className="flex h-full min-h-screen">
@@ -134,13 +128,20 @@ export default function Layout() {
                 </span>
               )}
               <ThemeToggle />
-              <div className="hidden text-right sm:block">
+              <div
+                className="hidden text-right sm:block"
+                title={
+                  autoSignedIn
+                    ? "Session established by the server (AUTO_LOGIN_ENABLED) — this build has no login page"
+                    : undefined
+                }
+              >
                 <div className="text-xs font-medium">{user?.username}</div>
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">{user?.role}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                  {user?.role}
+                  {autoSignedIn && " · auto"}
+                </div>
               </div>
-              <button onClick={handleLogout} className="btn-ghost" title="Sign out">
-                Sign out
-              </button>
             </div>
           </div>
         </header>

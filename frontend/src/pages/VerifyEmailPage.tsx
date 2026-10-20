@@ -48,9 +48,9 @@ export default function VerifyEmailPage() {
             <>
               <div className="text-3xl">✅</div>
               <h1 className="mt-3 text-lg font-bold text-slate-900 dark:text-white">Email verified</h1>
-              <p className="mt-1 text-xs text-slate-500">Your account is active. Sign in to continue.</p>
-              <Link to="/login" className="btn-primary mt-5 block w-full !py-2.5 text-center">
-                Go to sign in
+              <p className="mt-1 text-xs text-slate-500">Your account is active.</p>
+              <Link to="/dashboard" className="btn-primary mt-5 block w-full !py-2.5 text-center">
+                Continue to DiffMIA
               </Link>
             </>
           )}
@@ -60,8 +60,8 @@ export default function VerifyEmailPage() {
               <h1 className="mt-3 text-lg font-bold text-slate-900 dark:text-white">Verification failed</h1>
               <p className="mt-1 text-xs text-slate-500">{message}</p>
               <div className="mt-5 flex gap-2">
-                <Link to="/login" className="btn-ghost flex-1 !py-2.5 text-center">
-                  Sign in
+                <Link to="/dashboard" className="btn-ghost flex-1 !py-2.5 text-center">
+                  Continue to DiffMIA
                 </Link>
                 <Link to="/forgot-password" className="btn-primary flex-1 !py-2.5 text-center">
                   Resend link

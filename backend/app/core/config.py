@@ -116,6 +116,13 @@ class Settings(BaseSettings):
     password_reset_token_ttl_minutes: int = 60
     public_url: str = "http://localhost:5173"
 
+    # Automatic sign-in (no login page). When enabled, the frontend establishes
+    # a session for AUTO_LOGIN_USERNAME at startup, so the UI never presents a
+    # sign-in screen. Off by default — enable it only for trusted/self-hosted
+    # installations, never for a publicly reachable instance.
+    auto_login_enabled: bool = False
+    auto_login_username: str = "admin"
+
     # Security / limits
     max_upload_mb: int = 25
     rate_limit_per_minute: int = 600

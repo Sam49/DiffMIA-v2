@@ -54,6 +54,21 @@ export class ApiError extends Error {
   }
 }
 
+const REAUTH_GUARD_KEY = "diffmia_reauth_at";
+const REAUTH_GUARD_MS = 10_000;
+
+/**
+ * A rejected token is replaced by reloading the app, which then signs in again
+ * at startup. Guarded so a server that keeps rejecting cannot reload in a loop
+ * — the caller's error then surfaces instead.
+ */
+function restartSession(): void {
+  const last = Number(sessionStorage.getItem(REAUTH_GUARD_KEY) ?? "0");
+  if (Date.now() - last < REAUTH_GUARD_MS) return;
+  sessionStorage.setItem(REAUTH_GUARD_KEY, String(Date.now()));
+  window.location.reload();
+}
+
 async function request<T>(path: string, options: RequestInit = {}, retry = false): Promise<T> {
   const headers = new Headers(options.headers);
   const token = getToken();
@@ -64,7 +79,7 @@ async function request<T>(path: string, options: RequestInit = {}, retry = false
   const response = await fetch(`/api${path}`, { ...options, headers });
   if (response.status === 401 && token && !retry && !path.startsWith("/auth/login")) {
     clearAuth();
-    window.location.href = "/login";
+    restartSession();
     throw new ApiError({ error: "AUTHENTICATION_REQUIRED", message: "Session expired." }, 401);
   }
   if (response.status === 204) return undefined as T;
@@ -96,6 +111,8 @@ export const api = {
   // auth
   login: (username: string, password: string) =>
     post<TokenResponse>("/auth/login", { username, password }),
+  /** Credential-free session for installations that run without a login page. */
+  autoLogin: () => post<TokenResponse>("/auth/auto-login"),
   oauthStatus: () =>
     get<{ google_enabled: boolean; self_registration: boolean }>("/auth/oauth/status"),
   register: (username: string, email: string, password: string) =>
